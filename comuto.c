@@ -35,8 +35,9 @@ ZEND_DECLARE_MODULE_GLOBALS(comuto)
 /* True global resources - no need for thread safety here */
 static int le_comuto;
 
-ZEND_BEGIN_ARG_INFO(arginfo_array_create_rand, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_array_create_rand, 0, 0, 1)
 	ZEND_ARG_INFO(0, num_item)
+	ZEND_ARG_INFO(0, item_type)
 ZEND_END_ARG_INFO()
 /* {{{ comuto_functions[]
  *
@@ -54,7 +55,7 @@ zend_module_entry comuto_module_entry = {
 #if ZEND_MODULE_API_NO >= 20010901
 	STANDARD_MODULE_HEADER,
 #endif
-	"comuto_tools",
+	"comuto",
 	comuto_functions,
 	PHP_MINIT(comuto),
 	PHP_MSHUTDOWN(comuto),
