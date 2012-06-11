@@ -26,7 +26,7 @@
 #define RANDOM_STRING_SIZE 42 /* yes */
 
 #define GET_RANDOM_NUMBER(_number, _min, _max) {(_number) = php_rand(TSRMLS_C); RAND_RANGE((_number), (_min), (_max), PHP_RAND_MAX);}
-#define generate_random_long(_long) (GET_RANDOM_NUMBER((_long), 0, INT_MAX))
+#define generate_random_long(_long) {GET_RANDOM_NUMBER((_long), 0, INT_MAX)}
 
 #define COMMON_ZVAL_SIZE sizeof(zval_gc_info)
 

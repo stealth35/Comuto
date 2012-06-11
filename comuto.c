@@ -118,8 +118,6 @@ PHP_MINIT_FUNCTION(comuto)
 		tostring.arg_info = NULL;
 		tostring.num_args = 0;
 		tostring.required_num_args = 0;
-		tostring.pass_rest_by_reference = 0;
-		tostring.return_reference = 0;
 		tostring.fn_flags = datetime_functions->flags;
 		function_name_lc = zend_str_tolower_dup(tostring.function_name, strlen(tostring.function_name));
 		zend_hash_add(&(*datetime)->function_table,
@@ -193,15 +191,15 @@ PHP_METHOD(DateTime, __toString)
 COM_FUNCTION(array_create_rand)
 {
 	long num_items, items_type = COMUTO_ARRAY_RAND_TYPE_STRING, index, generated_long;
-	ulong i;
+	long i;
 	char *generated_string = NULL;
 
-	if(zend_parse_parameters(ZEND_NUM_ARGS(), "l|l", &num_items, &items_type) == FAILURE) {
+	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &num_items, &items_type) == FAILURE) {
 		return;
 	}
 
 	if(num_items <= 0) {
-		php_error_docref(NULL, E_WARNING, "Size should be a positive integer");
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Size should be a positive integer");
 		return;
 	}
 
@@ -228,7 +226,7 @@ COM_FUNCTION(array_create_rand)
 				add_next_index_long(return_value, generated_long);
 			break;
 			default:
-				php_error_docref(NULL, E_WARNING, "Unknown type");
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unknown type");
 			return;
 		}
 	}
@@ -238,9 +236,10 @@ COM_FUNCTION(array_stats)
 {
 	HashTable *array = NULL, *mem_usage_cache = NULL;
 	zval *llstats = NULL, *input;
-	int i, *j = NULL;
+	uint i, *j = NULL;
+	Bucket *p = NULL;
 
-	if(zend_parse_parameters(ZEND_NUM_ARGS(), "z", &input) == FAILURE) {
+	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &input) == FAILURE) {
 		return;
 	}
 	array = Z_ARRVAL_P(input);
@@ -257,7 +256,6 @@ COM_FUNCTION(array_stats)
 	add_assoc_bool(return_value, "persistent_alloc", array->persistent);
 
 	j = (int *)ecalloc(array->nTableSize, sizeof(int));
-	Bucket *p = NULL;
 	for(i=0; i<array->nTableSize; i++) {
 		if(!array->arBuckets[i]) {
 			continue;
@@ -282,14 +280,15 @@ COM_FUNCTION(array_stats)
 COM_FUNCTION(get_var_memory_usage)
 {
 	zval *arg = NULL;
-	if(zend_parse_parameters(ZEND_NUM_ARGS(), "z", &arg) == FAILURE) {
+	HashTable *cache;
+	size_t size;
+	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &arg) == FAILURE) {
 		return;
 	}
-	HashTable *cache;
 	ALLOC_HASHTABLE(cache);
 	zend_hash_init(cache, 8, NULL, NULL, 0);
 
-	size_t size = get_var_memory_usage_ex(arg, cache);
+	size = get_var_memory_usage_ex(arg, cache);
 	CLEAR_HASHTABLE(cache);
 	RETURN_LONG(size);
 }
@@ -297,6 +296,7 @@ COM_FUNCTION(get_var_memory_usage)
 
 static void generate_random_string(char **str)
 {
+	TSRMLS_FETCH();
 	long str_size, index;
 	static const char alpha[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 	size_t j                  = 0;
@@ -312,12 +312,14 @@ static void generate_random_string(char **str)
 
 static size_t get_var_memory_usage_ex(zval *val, HashTable *zval_cache)
 {
-	size_t *size;
+	TSRMLS_FETCH();
+	size_t *size, zvalsize;
+	zend_object *obj;
 	if(zend_hash_index_exists(zval_cache, (ulong)val)) {
 		return sizeof(zval *);
 	} else {
 		zend_hash_index_update(zval_cache, (ulong)val, &size, sizeof(void *), NULL);
-		size_t zvalsize = COMMON_ZVAL_SIZE;
+		zvalsize = COMMON_ZVAL_SIZE;
 		switch(Z_TYPE_P(val)) {
 			case IS_LONG:
 			case IS_BOOL:
@@ -337,7 +339,7 @@ static size_t get_var_memory_usage_ex(zval *val, HashTable *zval_cache)
 				 * however is more difficult as several objects could share the same CE. We leave it for later :)
 				 * + sizeof(zval*) * Z_OBJCE_P(val)->default_properties_count + sizeof(zval*) * Z_OBJCE_P(val)->default_static_members_count)
 				 */
-				zend_object *obj = (zend_object *)zend_object_store_get_object(val);
+				obj = (zend_object *)zend_object_store_get_object(val TSRMLS_CC);
 				if ((obj)->properties) {
 					zvalsize += COMMON_HT_SIZE(obj->properties);
 					ADD_SIZE_FROM_HT(obj->properties);
